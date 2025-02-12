@@ -1,0 +1,36 @@
+groups:
+  - name: my-rules
+    rules:
+      - record: job:cpu_seconds_total:avg_idle
+        expr: avg without(cpu)(rate(node_cpu_seconds_total{mode="idle"}[5m]))
+
+      - record: job:cpu_seconds_total:avg_not_idle
+        expr: avg without(cpu, mode)(rate(node_cpu_seconds_total{mode!="idle"}[5m]))
+
+  - name: my-rule-new
+    rules:
+      - record: job:cpu_seconds_total:avg_user
+        expr: avg without(cpu)(rate(node_cpu_seconds_total{mode ="user"}[5m]))
+
+      - alert: NodeExporterDown
+        expr: up{job="node_exporter"} == 0
+        for: 1m
+
+      - record: job:app_response_latency_seconds:rate1m
+        expr: rate(app_response_latency_seconds_sum[1m]) / rate(app_response_latency_seconds_count[1m])
+
+      - alert: AppLatencyAbove5s
+        expr: job:app_response_latency_seconds:rate1m >= 5
+        for: 2m
+        labels:
+          severity: Critical
+        annotations:
+          summary: 'Python app latency is over 5 Seconds'
+          description: 'app latency of instance {{ $labels.instance }} of job {{ $labels.job }} is {{ $value}} for more that 2 minutes.'
+          app_link: 'http://address:port'
+      
+      - alert: AppLatencyAbove2s
+        expr: 2 < job:app_response_latency_seconds:rate1m < 5
+        for: 2m
+        labels:
+          severity: Warning
